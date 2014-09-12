@@ -1,0 +1,34 @@
+#!/bin/bash
+set -e
+declare -r script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+declare -r device_ip=192.168.0.3
+declare -r device_cidr_netmask=24
+declare -r system_mount_point=$(adb shell mount|awk '/system/ {print $1}')
+declare -r ssh_key="~/.ssh/id_rsa.pub"
+
+adb root
+adb shell mount -o remount,rw $system_mount_point
+
+adb shell mkdir /data/busybox
+adb push ${script_dir}/busybox /data/busybox/busybox
+adb shell echo "export PATH=/data/busybox:$$PATH"
+adb shell chmod 755 /data/busybox/busybox
+adb shell /data/busybox/busybox --install
+
+adb shell setprop sys.usb.config rndis,adb
+ip address add ${device_ip}/${device_cidr_netmask} dev rndis0
+ip link set rndis0 up
+
+adb shell mkdir data/dropbear
+adb push ${script_dir}/dropbearmulti-armv6l /data/dropbear
+adb shell ln -s /system/xbin/dropbear /data/dropbear/dropbear;
+adb shell chmod 755 /data/dropbear
+adb shell mkdir /data/dropbear/.ssh
+adb shell chmod 700 /data/dropbear/.ssh
+adb push ${ssh_key} /data/dropbear/.ssh/authorized_keys
+adb shell dropbear -s -R
+
+
+adb shell mount -o remount,ro $system_mount_point
+
