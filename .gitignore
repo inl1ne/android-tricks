@@ -1,0 +1,7 @@
+# QtCreator cruft
+*.pro
+*.user
+*.autosave
+
+# output dirs
+build-nab*
